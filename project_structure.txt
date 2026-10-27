@@ -1,0 +1,21 @@
+IAQF_exact_source/
+├── app.py
+├── aqi.py
+├── avl.py
+├── database.py
+├── features.py
+├── graph.py
+├── hash_index.py
+├── ingest.py
+├── model.py
+├── pipeline.py
+├── rank.py
+├── window.py
+├── requirements.txt
+├── README.md
+├── data/
+│   └── README.txt
+├── templates/
+│   └── index.html
+└── tests/
+    └── test_all.py

@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Intelligent Air Quality Forecasting System</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{font-family:Arial;margin:0;background:#f4f6f8;color:#222}
+header{padding:22px;background:#173b57;color:#fff}
+main{max-width:1100px;margin:auto;padding:20px}
+.card{background:#fff;border-radius:12px;padding:18px;margin-bottom:18px;box-shadow:0 2px 8px #0001}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.big{font-size:32px;font-weight:700}
+select,button{padding:9px;border-radius:7px;border:1px solid #bbb}
+button{background:#173b57;color:#fff;cursor:pointer}
+table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}
+</style>
+</head>
+<body>
+<header><main><h1>Intelligent Air Quality Forecasting System</h1>
+<p>DSA-2 PBL • 24-hour AQI Forecast</p></main></header>
+<main>
+<div class="card">
+<select id="station"></select>
+<button onclick="load()">Refresh</button>
+<button onclick="train()">Train & Compare Models</button>
+</div>
+<div class="grid">
+<div class="card"><div>Forecast AQI</div><div class="big" id="aqi">--</div><div id="cat">--</div></div>
+<div class="card"><div>Selected Model</div><div id="model">--</div></div>
+<div class="card"><div>Nearest Stations</div><div id="near">--</div></div>
+</div>
+<div class="card"><h2>History</h2><canvas id="chart"></canvas></div>
+<div class="grid">
+<div class="card"><h2>Top Polluted Stations</h2><table><thead><tr><th>City</th><th>AQI</th><th>Category</th></tr></thead><tbody id="rank"></tbody></table></div>
+<div class="card"><h2>Alerts</h2><div id="alerts">--</div></div>
+</div>
+</main>
+<script>
+let chart;
+async function api(u,o){return (await fetch(u,o)).json();}
+async function init(){
+ const s=await api('/api/stations');
+ document.getElementById('station').innerHTML=s.map(x=>`<option value="${x.station_id}">${x.city}</option>`).join('');
+ if(s.length) load();
+}
+async function load(){
+ const id=document.getElementById('station').value;
+ const [f,h,n,r,a]=await Promise.all([
+  api('/api/forecast/'+id),api('/api/history/'+id),
+  api('/api/neighbours/'+id),api('/api/ranking'),api('/api/alerts')
+ ]);
+ document.getElementById('aqi').textContent=f.forecast_24h ?? '--';
+ document.getElementById('cat').textContent=f.category ?? f.error ?? '--';
+ document.getElementById('model').textContent=f.model ?? '--';
+ document.getElementById('near').innerHTML=n.map(x=>`${x.station_id} — ${x.distance} km`).join('<br>');
+ document.getElementById('rank').innerHTML=r.map(x=>`<tr><td>${x.city}</td><td>${x.aqi}</td><td>${x.category}</td></tr>`).join('');
+ document.getElementById('alerts').innerHTML=a.length?a.map(x=>`<p>${x.city}: AQI ${x.aqi}</p>`).join(''):'No active alerts';
+ if(chart) chart.destroy();
+ chart=new Chart(document.getElementById('chart'),{type:'line',
+ data:{labels:h.map(x=>x.timestamp),datasets:[{label:'AQI',data:h.map(x=>x.aqi)}]},
+ options:{responsive:true}});
+}
+async function train(){
+ const id=document.getElementById('station').value;
+ const r=await api('/api/train',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({station_id:id})});
+ alert(JSON.stringify(r,null,2)); load();
+}
+document.getElementById('station').addEventListener('change',load);
+init();
+</script>
+</body>
+</html>
